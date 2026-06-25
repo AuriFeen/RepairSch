@@ -8,4 +8,4 @@ Underlying issue before release was actually how I could get SMS to work but hey
 
 # Installation
 
-To actually install it you download on your Linux machine (Which most of you have I guess but I haven't tried windows yet) and you go to it, press it and pulls the needed files for yourself using the Makefile and builds it as well and then in the RepairSch directory you just press ./launcher.sh
+To actually install it you download on your Linux machine (Which most of you have I guess but I haven't tried windows yet) and you go to it, press it and pulls the needed files for yourself using the Makefile and builds it as well and then in the RepairSch directory you just press ./launcher.sh and for it to actually send SMS messages you need to have Simple SMS Gateway by Pabrik Aplikasi (tho I don't know if there's an alternetive by now)
