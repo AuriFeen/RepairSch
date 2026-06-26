@@ -8,25 +8,23 @@ PIP = $(VENV)/bin/pip
 .PHONY: install clean
 
 install:
-	@echo "--- Fetching Project... ---"
-	@if [ ! -d "$(APP_DIR)" ]; then git clone $(REPO_URL) $(APP_DIR); fi
 	@echo "--- Setting up Virtual Environment... ---"
-	@python3 -m venv $(VENV)
-	@$(PIP) install --upgrade pip
+	@python3 -m venv venv
+	@./venv/bin/pip install --upgrade pip
 	@echo "--- Installing Dependencies... ---"
-	@# Use the requirements file directly from the repo
-	@$(PIP) install -r $(APP_DIR)/requirements.txt
+	@if [ -f requirements.txt ]; then ./venv/bin/pip install -r requirements.txt; fi
 	@echo "--- Finalizing Desktop Integration... ---"
-	@chmod +x $(APP_DIR)/launcher.sh
-	@echo "[Desktop Entry]" > $(APP_DIR)/RepairSch.desktop
-	@echo "Name=RepairSch" >> $(APP_DIR)/RepairSch.desktop
-	@echo "Exec=$(shell pwd)/$(APP_DIR)/launcher.sh" >> $(APP_DIR)/RepairSch.desktop
-	@echo "Path=$(shell pwd)/$(APP_DIR)" >> $(APP_DIR)/RepairSch.desktop
-	@echo "Type=Application" >> $(APP_DIR)/RepairSch.desktop
-	@echo "Terminal=true" >> $(APP_DIR)/RepairSch.desktop
+	@chmod +x launcher.sh
+	@# Update the .desktop file to reflect current path
+	@echo "[Desktop Entry]" > RepairSch.desktop
+	@echo "Name=RepairSch" >> RepairSch.desktop
+	@echo "Exec=$(shell pwd)/launcher.sh" >> RepairSch.desktop
+	@echo "Path=$(shell pwd)" >> RepairSch.desktop
+	@echo "Type=Application" >> RepairSch.desktop
+	@echo "Terminal=true" >> RepairSch.desktop
 	@mkdir -p ~/.local/share/applications
-	@cp $(APP_DIR)/RepairSch.desktop ~/.local/share/applications/
-	@echo "Installation Complete! You can now run from your Applications menu."
+	@cp RepairSch.desktop ~/.local/share/applications/
+	@echo "Installation Complete!"
 
 clean:
 	rm -rf $(APP_DIR)
