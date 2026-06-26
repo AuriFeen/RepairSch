@@ -8,7 +8,7 @@ app = Flask(__name__)
 # --- CONFIGURATION ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, 'repairs.db')
-GATEWAY_URL = "http://192.168.1.76:8080/send-sms"
+GATEWAY_URL = "http://192.168.1.47:8080/send-sms"
 
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
@@ -31,7 +31,7 @@ def init_db():
 def send_sms(phone, name):
     payload = {
         "number": phone,
-        "message": f"Γεια σας {name}, η επισκευή σας είναι έτοιμη! Παρακαλούμε ελάτε στην Αγίου Ανδρέου 89."
+        "message": f"Γεια σας. Το ρολοί σας είναι έτοιμο, μπορείτε νασ το πάρετε από την Αγίου Ανδρέου 79 κάθε μέρα 9-2! ."
     }
     try:
         # Added a 5-second timeout so the dashboard doesn't freeze if the phone is offline

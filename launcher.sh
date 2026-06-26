@@ -1,16 +1,20 @@
 #!/bin/bash
-# Path to the directory where the repo was cloned
+
+# Navigate to the script's directory
 cd "$(dirname "$0")"
 
-# Start the app using the venv's python directly
-./venv/bin/python3 app.py &
-APP_PID=$!
+# 1. Check if the venv exists, if not, try to run make install
+if [ ! -d "venv" ]; then
+    echo "Virtual environment not found. Running setup..."
+    make install
+fi
 
-# Wait for server to initialize
-sleep 3
+# 2. Inform the user
+echo "------------------------------------------"
+echo "Starting application..."
+echo "Access the app at: http://127.0.0.1:5000"
+echo "Press Ctrl+C to stop the server."
+echo "------------------------------------------"
 
-# Open the browser
-xdg-open http://localhost:5000
-
-# Keep the terminal window open
-wait $APP_PID
+# 3. Launch the app using the venv python
+./venv/bin/python3 app.py
