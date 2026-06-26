@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kotsakes Repair Dashboard</title>
+    <style>
+        :root { --bg: #f4f7f6; --surface: #ffffff; --text: #2d3436; --primary: #3498db; --success: #2ecc71; --danger: #e74c3c; --border: #eeeeee; --column-bg: #dfe6e9; }
+        body.dark-mode { --bg: #121212; --surface: #1e1e1e; --text: #f4f7f6; --primary: #2980b9; --success: #27ae60; --danger: #c0392b; --border: #333333; --column-bg: #2d2d2d; }
+        body { font-family: -apple-system, sans-serif; padding: 20px; background-color: var(--bg); color: var(--text); }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .input-group { background: var(--surface); padding: 20px; border-radius: 16px; display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input, select { padding: 15px; border: 2px solid var(--border); border-radius: 8px; flex: 1 1 200px; background: var(--surface); color: var(--text); }
+        .dashboard { display: flex; gap: 15px; flex-wrap: wrap; }
+        .column { flex: 1; min-width: 300px; background: var(--column-bg); padding: 15px; border-radius: 12px; min-height: 70vh; }
+        .task-card { background: var(--surface); padding: 15px; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-ready { background: var(--success); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; margin-right: 5px; }
+        .btn-trash { background: var(--danger); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; }
+        .btn-restore { background: var(--primary); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; }
+        
+        /* Layout toggle views */
+        .hidden { display: none !important; }
+        .archive-view-container { width: 100%; background: var(--column-bg); padding: 25px; border-radius: 12px; min-height: 70vh; box-sizing: border-box; }
+        .archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 15px; }
+        .nav-btn { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <header>
+        <h2 id="title-main">Kotsakes Repair</h2>
+        <input type="text" id="search-input" placeholder="Search ID/Name/Phone..." onkeyup="loadTasks()">
+        <div style="display: flex; gap: 10px;">
+            <select id="lang-select" onchange="changeLanguage()"><option value="en">English</option><option value="el">Ελληνικά</option></select>
+            <button onclick="toggleArchiveView()" id="archive-toggle-btn" class="nav-btn">Archive</button>
+            <button onclick="toggleTheme()" style="background:none; border:none; font-size:20px; cursor:pointer;">🌓</button>
+        </div>
+    </header>
+
+    <!-- Create Order Form Panel -->
+    <div class="input-group" id="form-panel">
+        <input type="text" id="name-input" placeholder="Customer Name">
+        <input type="tel" id="phone-input" placeholder="Phone">
+        <select id="details-select">
+            <option id="opt-default" value="" disabled selected>Service Type...</option>
+            <option id="opt-1" value="Service">Service</option>
+            <option id="opt-2" value="Battery">Battery</option>
+            <option id="opt-3" value="Strap">Strap</option>
+            <option id="opt-4" value="Repair">Repair</option>
+        </select>
+        <button onclick="addTask()" id="add-btn" class="btn-ready">Add Order</button>
+    </div>
+
+    <!-- Active Workflow Screen -->
+    <div class="dashboard" id="board-screen">
+        <div class="column"><h3 id="h-active">Active</h3><div id="active-list"></div></div>
+        <div class="column"><h3 id="h-pickup">Pickup Queue</h3><div id="pickup-list"></div></div>
+    </div>
+
+    <!-- Archive Screen (Kept in the same DOM context for instant translation/theme sync) -->
+    <div class="archive-view-container hidden" id="archive-screen">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 id="h-trash" style="margin: 0;">Archive</h3>
+            <button onclick="clearAllArchive()" id="btn-clear" class="btn-trash" style="padding: 10px 15px;">Clear</button>
+        </div>
+        <div class="archive-grid" id="archive-list"></div>
+    </div>
+
+    <script>
+        const dict = {
+            en: { 
+                title: "Kotsakes Repair", name: "Customer Name", phone: "Phone", opt: "Service Type...", 
+                opt1: "Service", opt2: "Battery", opt3: "Strap", opt4: "Repair", add: "Add Order", 
+                active: "Active", pickup: "Pickup Queue", trash: "Archive Items", clear: "Clear All Permanently",
+                btnReady: "Ready (Send SMS)", btnTrash: "Archive", btnRestore: "Restore to Queue",
+                viewArchive: "View Archive", viewDashboard: "Back to Dashboard"
+            },
+            el: { 
+                title: "Κωτσάκης Επισκευές", name: "Όνομα Πελάτη", phone: "Τηλέφωνο", opt: "Τύπος Υπηρεσίας...", 
+                opt1: "Σέρβις", opt2: "Μπαταρία", opt3: "Λουράκι", opt4: "Επισκευή", add: "Προσθήκη", 
+                active: "Ενεργά", pickup: "Αναμονή", trash: "Αρχειοθετημένα", clear: "Μόνιμη Εκκαθάριση",
+                btnReady: "Έτοιμο (Αποστολή SMS)", btnTrash: "Αρχειοθέτηση", btnRestore: "Επαναφορά στην Αναμονή",
+                viewArchive: "Προβολή Αρχείου", viewDashboard: "Πίσω στο Ταμπλό"
+            }
+        };
+
+        let currentLang = 'en';
+        let showingArchive = false;
+
+        // --- INIT STATE LOAD ---
+        if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+        if(localStorage.getItem('lang')) {
+            currentLang = localStorage.getItem('lang');
+            document.getElementById('lang-select').value = currentLang;
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+
+        function changeLanguage() {
+            currentLang = document.getElementById('lang-select').value;
+            localStorage.setItem('lang', currentLang);
+            updateUIText();
+            loadTasks(); 
+        }
+
+        function updateUIText() {
+            const t = dict[currentLang];
+            document.getElementById('title-main').innerText = t.title;
+            document.getElementById('name-input').placeholder = t.name;
+            document.getElementById('phone-input').placeholder = t.phone;
+            document.getElementById('opt-default').innerText = t.opt;
+            document.getElementById('opt-1').innerText = t.opt1;
+            document.getElementById('opt-2').innerText = t.opt2;
+            document.getElementById('opt-3').innerText = t.opt3;
+            document.getElementById('opt-4').innerText = t.opt4;
+            document.getElementById('add-btn').innerText = t.add;
+            document.getElementById('h-active').innerText = t.active;
+            document.getElementById('h-pickup').innerText = t.pickup;
+            document.getElementById('h-trash').innerText = t.trash;
+            document.getElementById('btn-clear').innerText = t.clear;
+            
+            // Context-sensitive Toggle Button Translation
+            document.getElementById('archive-toggle-btn').innerText = showingArchive ? t.viewDashboard : t.viewArchive;
+        }
+
+        function toggleArchiveView() {
+            showingArchive = !showingArchive;
+            
+            // Screen Toggle Layout Shifting
+            document.getElementById('form-panel').classList.toggle('hidden', showingArchive);
+            document.getElementById('board-screen').classList.toggle('hidden', showingArchive);
+            document.getElementById('archive-screen').classList.toggle('hidden', !showingArchive);
+            
+            updateUIText();
+            loadTasks();
+        }
+
+        async function loadTasks() {
+            const q = document.getElementById('search-input').value;
+            const t = dict[currentLang];
+            
+            if (!showingArchive) {
+                // Fetch Active and Pickup queues
+                const res = await fetch(`/api/tasks?q=${q}`);
+                const tasks = await res.json();
+                
+                document.getElementById('active-list').innerHTML = '';
+                document.getElementById('pickup-list').innerHTML = '';
+                
+                tasks.forEach(task => {
+                    const div = document.createElement('div');
+                    div.className = 'task-card';
+                    
+                    if(task.status === 'active') {
+                        div.innerHTML = `<strong>#${task.custom_id} - ${task.name}</strong><p>${task.phone} | <em>${task.details}</em></p>
+                            <button class="btn-ready" onclick="moveTask(${task.id}, 'pickup')">${t.btnReady}</button>`;
+                        document.getElementById('active-list').appendChild(div);
+                    } else if(task.status === 'pickup') {
+                        div.innerHTML = `<strong>#${task.custom_id} - ${task.name}</strong><p>${task.phone} | <em>${task.details}</em></p>
+                            <button class="btn-trash" onclick="moveTask(${task.id}, 'archive')">${t.btnTrash}</button>`;
+                        document.getElementById('pickup-list').appendChild(div);
+                    }
+                });
+            } else {
+                // Fetch Archived files
+                const res = await fetch(`/api/archive?q=${q}`);
+                const tasks = await res.json();
+                const archiveContainer = document.getElementById('archive-list');
+                archiveContainer.innerHTML = '';
+                
+                tasks.forEach(task => {
+                    const div = document.createElement('div');
+                    div.className = 'task-card';
+                    div.innerHTML = `<strong>#${task.custom_id} - ${task.name}</strong><p>${task.phone} | <em>${task.details}</em></p>
+                        <button class="btn-restore" onclick="moveTask(${task.id}, 'pickup')">${t.btnRestore}</button>`;
+                    archiveContainer.appendChild(div);
+                });
+            }
+        }
+
+        async function moveTask(id, newStatus) {
+            const res = await fetch(`/api/tasks/${id}/move`, { 
+                method: 'PUT', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({status: newStatus})
+            });
+            const data = await res.json();
+            if (newStatus === 'pickup' && !data.sms_sent) {
+                alert("SMS notification failure event!");
+            }
+            loadTasks();
+        }
+
+        async function addTask() {
+            const nameEl = document.getElementById('name-input');
+            const phoneEl = document.getElementById('phone-input');
+            const detailEl = document.getElementById('details-select');
+            
+            if(!nameEl.value || !phoneEl.value) return;
+
+            const data = { name: nameEl.value, phone: phoneEl.value, details: detailEl.value };
+            await fetch('/api/tasks', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(data)
+            });
+            
+            nameEl.value = '';
+            phoneEl.value = '';
+            loadTasks();
+        }
+
+        async function clearAllArchive() {
+            if(!confirm("Are you sure you want to permanently clear the entire archive table?")) return;
+            await fetch('/api/archive/clear', { method: 'DELETE' });
+            loadTasks();
+        }
+
+        // Run UI definitions parsing on load
+        updateUIText();
+        loadTasks();
+    </script>
+</body>
+</html>
