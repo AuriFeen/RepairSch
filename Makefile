@@ -1,6 +1,7 @@
 # Configuration
 REPO_URL = https://github.com/AuriFeen/RepairSch.git
-APP_DIR = RepairSch_Source
+# Configuration - Pointing to the current directory
+APP_DIR = .
 VENV = $(APP_DIR)/venv
 PIP = $(VENV)/bin/pip
 
