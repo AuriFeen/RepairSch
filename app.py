@@ -8,8 +8,9 @@ app = Flask(__name__)
 
 # --- CONFIGURATION ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Note: Ensure you have a 'templates' folder and put 'dash.html' inside it
 DB_FILE = os.path.join(BASE_DIR, 'repairs.db')
-GATEWAY_URL = "http://192.168.1.76:8080/send-sms"
+GATEWAY_URL = "http://192.168.1.47:8080/send-sms"
 
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
@@ -33,10 +34,9 @@ def init_db():
 def send_sms(phone, name):
     payload = {
         "number": phone,
-        "message": f"Γεια σας,το ρολόι σας είναι έτοιμο. Μπορείτε να έρθετε να το παραλάβετε από την Αγίου Ανδρέου 79 κάθε μέρα 9 με 2!"
+        "message": f"Γεια σας, το ρολόι σας είναι έτοιμο. Μπορείτε να έρθετε να το παραλάβετε από την Αγίου Ανδρέου 79 κάθε μέρα 9 με 2! -Σας ευχαριστώ πολύ, Παναγιώτης Κωτσάκης"
     }
     try:
-        # Added a 5-second timeout so the dashboard doesn't freeze if the phone is offline
         response = requests.post(GATEWAY_URL, json=payload, headers={"Content-Type": "application/json"}, timeout=5)
         response.raise_for_status()
         return True
@@ -51,16 +51,31 @@ def index():
 
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
-    # Merged search functionality
+    # Only returns active and pickup tasks (excludes archive)
     q = request.args.get('q', '')
     with get_db_connection() as conn:
         if q:
             tasks = conn.execute(
-                "SELECT * FROM repairs WHERE name LIKE ? OR phone LIKE ? OR custom_id LIKE ?", 
+                "SELECT * FROM repairs WHERE status != 'archive' AND (name LIKE ? OR phone LIKE ? OR custom_id LIKE ?)", 
                 (f'%{q}%', f'%{q}%', f'%{q}%')
             ).fetchall()
         else:
-            tasks = conn.execute('SELECT * FROM repairs').fetchall()
+            tasks = conn.execute("SELECT * FROM repairs WHERE status != 'archive'").fetchall()
+            
+    return jsonify([dict(t) for t in tasks])
+
+@app.route('/api/archive', methods=['GET'])
+def get_archive():
+    # Only returns archived tasks
+    q = request.args.get('q', '')
+    with get_db_connection() as conn:
+        if q:
+            tasks = conn.execute(
+                "SELECT * FROM repairs WHERE status = 'archive' AND (name LIKE ? OR phone LIKE ? OR custom_id LIKE ?)", 
+                (f'%{q}%', f'%{q}%', f'%{q}%')
+            ).fetchall()
+        else:
+            tasks = conn.execute("SELECT * FROM repairs WHERE status = 'archive'").fetchall()
             
     return jsonify([dict(t) for t in tasks])
 
@@ -70,7 +85,6 @@ def add_task():
     if not data.get('name') or not data.get('phone'):
         return jsonify({"error": "Name and phone required"}), 400
         
-    # Generate the 5-digit custom ID
     custom_id = str(random.randint(10000, 99999))
         
     with get_db_connection() as conn:
@@ -90,22 +104,19 @@ def move_task(task_id):
         if not task:
             return jsonify({"error": "Task not found"}), 404
             
-        # Update the status in the database
         conn.execute('UPDATE repairs SET status = ? WHERE id = ?', (new_status, task_id))
         conn.commit()
         
-        # AUTOMATIC SMS LOGIC: Only send if moving TO pickup queue FROM somewhere else
+        # SMS logic
         if new_status == 'pickup' and task['status'] != 'pickup':
             sms_sent = send_sms(task['phone'], task['name'])
             
     return jsonify({"status": "success", "sms_sent": sms_sent})
 
-# Combined the trash/archive clear concept
-@app.route('/api/tasks/trash', methods=['DELETE'])
-def empty_trash():
+@app.route('/api/archive/clear', methods=['DELETE'])
+def clear_archive():
     with get_db_connection() as conn:
-        # Assuming your frontend uses 'trash' status instead of 'archive'
-        conn.execute("DELETE FROM repairs WHERE status = 'trash'")
+        conn.execute("DELETE FROM repairs WHERE status = 'archive'")
         conn.commit()
     return jsonify({"status": "success"})
 
